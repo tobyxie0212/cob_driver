@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(cob_phidgets)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
    execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
@@ -16,9 +15,11 @@ else(CMAKE_COMPILER_IS_GNUCXX)
    add_definitions("-std=c++0x")
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
-find_package(catkin REQUIRED COMPONENTS libphidgets message_generation roscpp sensor_msgs std_msgs)
+project(cob_phidgets)
 
-### Message Generation ###
+find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs sensor_msgs libphidgets message_generation)
+
+
 add_message_files(
   FILES
   AnalogSensor.msg
@@ -27,42 +28,64 @@ add_message_files(
 
 add_service_files(
   FILES
-  SetDataRate.srv
+  SetDataRate.srv 
   SetDigitalSensor.srv
   SetTriggerValue.srv
 )
 
-generate_messages(DEPENDENCIES std_msgs)
+generate_messages(DEPENDENCIES std_msgs sensor_msgs)
 
+###################################
+## catkin specific configuration ##
+###################################
 catkin_package(
-  CATKIN_DEPENDS message_runtime std_msgs
+    CATKIN_DEPENDS roscpp rospy libphidgets std_msgs sensor_msgs message_runtime
+    INCLUDE_DIRS common/include
+    LIBRARIES # TODO
 )
 
-### BUILD ###
-include_directories(${PROJECT_SOURCE_DIR}/ros/include ${PROJECT_SOURCE_DIR}/common/include ${catkin_INCLUDE_DIRS})
+
+###########
+## Build ##
+###########
+include_directories(${PROJECT_SOURCE_DIR}/ros/include ${PROJECT_SOURCE_DIR}/common/include ${Boost_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS})
+
 
 add_executable(range_sensors ros/src/phidgets_range_sensors.cpp)
-add_dependencies(range_sensors ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(range_sensors ${PROJECT_NAME}_gencpp)
 target_link_libraries(range_sensors ${catkin_LIBRARIES})
 
 add_executable(device_name ros/src/set_device_name.cpp)
-add_dependencies(device_name ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(device_name ${PROJECT_NAME}_gencpp)
 target_link_libraries(device_name ${catkin_LIBRARIES})
 
-add_executable(phidget_sensors
-  ros/src/phidget_sensors_node.cpp
-  ros/src/phidget_manager.cpp
-  common/src/phidget.cpp
-  common/src/phidgetik.cpp
-  ros/src/phidgetik_ros.cpp)
-add_dependencies(phidget_sensors ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_executable(phidget_sensors 
+	ros/src/phidget_sensors_node.cpp
+	ros/src/phidget_manager.cpp 
+	common/src/phidget.cpp 
+	common/src/phidgetik.cpp 
+	ros/src/phidgetik_ros.cpp)
+add_dependencies(phidget_sensors ${PROJECT_NAME}_gencpp)
 target_link_libraries(phidget_sensors ${catkin_LIBRARIES})
 
-### INSTALL ###
+
+#############
+## Install ##
+#############
+
+## Mark executables and/or libraries for installation
 install(TARGETS range_sensors phidget_sensors device_name
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(DIRECTORY common/include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+)
+
+install(DIRECTORY ros/include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
 )
 
 install(PROGRAMS ros/src/simulated_range_sensors.py
